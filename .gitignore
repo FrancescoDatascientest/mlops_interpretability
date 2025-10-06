@@ -1,0 +1,11 @@
+# Dossiers à ignorer
+data/
+artifacts/
+
+# Fichiers Python temporaires
+__pycache__/
+*.pyc
+*.pyo
+
+# Checkpoints Jupyter
+.ipynb_checkpoints/
