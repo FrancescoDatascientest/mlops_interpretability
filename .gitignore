@@ -9,3 +9,5 @@ __pycache__/
 
 # Checkpoints Jupyter
 .ipynb_checkpoints/
+/data
+/artifacts
