@@ -1,3 +1,10 @@
+# Projet MLOps Interprétabilité
+
+Ce projet illustre une pipeline MLOps avec suivi d’interprétabilité des modèles.
+
+## Structure du projet
+
+```bash
 mlops_interpretability/
 │
 ├── api/ # API FastAPI
