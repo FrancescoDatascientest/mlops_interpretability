@@ -3,13 +3,20 @@ import joblib
 import pandas as pd
 import os
 from training.preprocess import preprocess_for_inference
+from utils.config_loader import load_config
 
 # Init API
 app = FastAPI(title="Interpretable ML API")
 
-BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-MODEL_PATH = os.path.join(BASE_DIR, "artifacts", "rf_pitch_model.joblib")
-OHE_PATH = os.path.join(BASE_DIR, "artifacts", "ohe_encoder.joblib")
+# BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+# MODEL_PATH = os.path.join(BASE_DIR, "artifacts", "rf_pitch_model.joblib")
+# OHE_PATH = os.path.join(BASE_DIR, "artifacts", "ohe_encoder.joblib")
+
+config = load_config()
+
+MODEL_PATH = os.path.join(config["artifacts_dir"], "rf_pitch_model.joblib")
+OHE_PATH = os.path.join(config["artifacts_dir"], "ohe_encoder.joblib")
+
 
 @app.on_event("startup")
 def load_artifacts():

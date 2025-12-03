@@ -6,9 +6,17 @@ import joblib
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.model_selection import train_test_split
 from preprocess import preprocess_for_training
+from utils.config_loader import load_config
 
-DATA_DIR = "data/"
-ARTIFACTS_DIR = "artifacts/"
+# DATA_DIR = "data/"
+# ARTIFACTS_DIR = "artifacts/"
+# MODEL_PATH = os.path.join(ARTIFACTS_DIR, "model.joblib")
+# OHE_PATH = os.path.join(ARTIFACTS_DIR, "ohe_encoder.joblib")
+
+config = load_config()
+
+DATA_DIR = config["data_dir"]
+ARTIFACTS_DIR = config["artifacts_dir"]
 MODEL_PATH = os.path.join(ARTIFACTS_DIR, "model.joblib")
 OHE_PATH = os.path.join(ARTIFACTS_DIR, "ohe_encoder.joblib")
 

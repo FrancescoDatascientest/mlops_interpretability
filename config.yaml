@@ -1,0 +1,3 @@
+data_dir: "data/"
+artifacts_dir: "artifacts/"
+s3_bucket: "s3://mlops_interpretability/"

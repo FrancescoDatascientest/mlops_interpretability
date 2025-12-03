@@ -5,7 +5,7 @@ import joblib
 import numpy as np
 import pandas as pd
 import os
-
+from training.preprocess import preprocess_for_inference
 
 # Initialiser l'application
 app = FastAPI(title="Interpretable ML API")

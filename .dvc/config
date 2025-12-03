@@ -1,0 +1,7 @@
+[core]
+    remote = dagshub
+['remote "dagshub"']
+    url = s3://dagshub-storage/FrancescoDatascientest/mlops_interpretability
+    endpointurl = https://dagshub.com
+    access_key_id = 1c93e803b8f3378834e2779884b8c1e4e2fbd30e
+    secret_access_key = 1c93e803b8f3378834e2779884b8c1e4e2fbd30e
