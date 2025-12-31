@@ -1,11 +1,11 @@
 stages:
   train:
-    cmd: python training/train.py
+    cmd: set PYTHONPATH=%CD% && python training/train.py
     deps:
       - training/train.py
       - training/preprocess.py
       - utils/config_loader.py
-      - data  # le dossier contenant tous les CSV
+      - data
     outs:
       - artifacts/rf_pitch_model.joblib
       - artifacts/ohe_encoder.joblib

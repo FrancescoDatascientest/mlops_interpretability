@@ -5,7 +5,7 @@ import os
 import joblib
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.model_selection import train_test_split
-from preprocess import preprocess_for_training
+from preprocess import preprocess_train
 from utils.config_loader import load_config
 
 # DATA_DIR = "data/"
@@ -17,22 +17,25 @@ config = load_config()
 
 DATA_DIR = config["data_dir"]
 ARTIFACTS_DIR = config["artifacts_dir"]
-MODEL_PATH = os.path.join(ARTIFACTS_DIR, "model.joblib")
+MODEL_PATH = os.path.join(ARTIFACTS_DIR, "rf_pitch_model.joblib")
 OHE_PATH = os.path.join(ARTIFACTS_DIR, "ohe_encoder.joblib")
 
 def load_raw_data():
     files = glob.glob(os.path.join(DATA_DIR, "*.csv"))
-    dfs = [pd.read_csv(f) for f in files]
+    dfs = []
+    for f in files:
+        df_csv = pd.read_csv(f)
+        if not df_csv.empty:
+            dfs.append(df_csv)
+    if len(dfs) == 0:
+        raise ValueError("Aucun CSV non vide trouvé dans data/")
     df = pd.concat(dfs, ignore_index=True)
     return df
 
 def train():
     df = load_raw_data()
-    y = df['pitch_name']
-    X = df.drop(columns=['pitch_name'])
-
     # Preprocessing + fit OHE
-    X_processed, ohe = preprocess_for_training(X)
+    X_processed, ohe, y = preprocess_train(df)
 
     # Train/test split
     X_train, X_test, y_train, y_test = train_test_split(X_processed, y, test_size=0.2, random_state=42)

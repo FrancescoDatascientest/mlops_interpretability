@@ -5,6 +5,16 @@ import pandas as pd
 from utils.config_loader import load_config
 from training.preprocess import preprocess_for_inference
 import subprocess
+from fastapi.responses import FileResponse
+from .interpretability import (
+    init_explainer,
+    compute_local_shap,
+    compute_global_shap,
+    generate_summary_plot,
+    generate_dependence_plot,
+    generate_force_plot,
+)
+
 
 app = FastAPI(title="Interpretable ML API")
 
@@ -34,6 +44,7 @@ def load_artifacts():
     # Charger les artefacts
     model = joblib.load(MODEL_LOCAL_PATH)
     ohe_encoder = joblib.load(OHE_LOCAL_PATH)
+    init_explainer(model)
     print("✅ Model and OHE loaded from S3")
 
 
@@ -50,3 +61,45 @@ async def predict(file: UploadFile = File(...)):
         "nb_samples": len(df_result),
         "preview": preview
     }
+
+@app.post("/interpretability/plot/summary")
+async def summary_plot(file: UploadFile = File(...)):
+    # 1) Lire et préprocesser le fichier envoyé
+    df = pd.read_csv(file.file)
+    X_processed = preprocess_for_inference(df, ohe_encoder)
+
+    # 2) SHAP local sur X
+    shap_vals = compute_local_shap(X_processed)["shap_values"]
+
+    # 3) Générer l’image
+    output_path = "summary_plot.png"
+    generate_summary_plot(X_processed, shap_vals, output_path)
+
+    # 4) Renvoi de l’image
+    return FileResponse(output_path, media_type="image/png")
+
+
+@app.post("/interpretability/plot/dependence")
+async def dependence_plot(feature: str, file: UploadFile = File(...)):
+    df = pd.read_csv(file.file)
+    X_processed = preprocess_for_inference(df, ohe_encoder)
+
+    shap_vals = compute_local_shap(X_processed)["shap_values"]
+
+    output_path = f"dependence_{feature}.png"
+    generate_dependence_plot(X_processed, shap_vals, feature, output_path)
+
+    return FileResponse(output_path, media_type="image/png")
+
+@app.post("/interpretability/plot/force")
+async def force_plot(index: int = 0, file: UploadFile = File(...)):
+    df = pd.read_csv(file.file)
+    X_processed = preprocess_for_inference(df, ohe_encoder)
+
+    shap_vals_dict = compute_local_shap(X_processed)
+    shap_vals = shap_vals_dict["shap_values"]
+
+    output_path = f"force_plot_{index}.html"
+    generate_force_plot(explainer, shap_vals, X_processed, index, output_path)
+
+    return FileResponse(output_path, media_type="text/html")

@@ -1,0 +1,31 @@
+schema: '2.0'
+stages:
+  train:
+    cmd: set PYTHONPATH=%CD% && python training/train.py
+    deps:
+    - path: data
+      hash: md5
+      md5: fb7c3e0256263519b09db0cf8fda2e56.dir
+      size: 20447788
+      nfiles: 15
+    - path: training/preprocess.py
+      hash: md5
+      md5: 585fa70b4e4130969d5a5a441480ac4b
+      size: 4050
+    - path: training/train.py
+      hash: md5
+      md5: cc827b1e4eb55fbc709c807ae83ac6b5
+      size: 1662
+    - path: utils/config_loader.py
+      hash: md5
+      md5: 515ea469cecc0e86a2e315f2d8ea091a
+      size: 400
+    outs:
+    - path: artifacts/ohe_encoder.joblib
+      hash: md5
+      md5: 7307ae130c9257fbb604e45f416ad69e
+      size: 2842
+    - path: artifacts/rf_pitch_model.joblib
+      hash: md5
+      md5: dd2c6b55c45416b80dd30c8e2cec289b
+      size: 456766129
