@@ -9,3 +9,4 @@ stages:
     outs:
       - artifacts/rf_pitch_model.joblib
       - artifacts/ohe_encoder.joblib
+      - artifacts/label_encoder.joblib

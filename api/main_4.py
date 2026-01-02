@@ -23,6 +23,7 @@ config = load_config()
 ARTIFACTS_DIR = config["artifacts_dir"]
 MODEL_LOCAL_PATH = os.path.join(ARTIFACTS_DIR, "rf_pitch_model.joblib")
 OHE_LOCAL_PATH = os.path.join(ARTIFACTS_DIR, "ohe_encoder.joblib")
+LE_LOCAL_PATH = os.path.join(ARTIFACTS_DIR, "label_encoder.joblib")
 
 @app.on_event("startup")
 def load_artifacts():
@@ -52,7 +53,9 @@ async def predict(file: UploadFile = File(...)):
     # 1️⃣ Lire et preprocesser le CSV
     df = pd.read_csv(file.file)
     X_processed = preprocess_for_inference(df, ohe_encoder)
-    preds = model.predict(X_processed)
+    preds_encoded = model.predict(X_processed)
+    label_encoder = joblib.load(LE_LOCAL_PATH)
+    preds = label_encoder.inverse_transform(preds_encoded)
 
     # 2️⃣ Créer un explainer pour ce dataset
     explainer = init_explainer(model)
@@ -65,10 +68,13 @@ async def predict(file: UploadFile = File(...)):
     app.state.explainer = explainer
     app.state.predictions = preds
 
-    preview = X_processed.head(5).to_dict(orient="records")
+    preview = X_processed.head(4).copy()
+    preview['preds'] = preds[:4] 
+    preview_records = preview.to_dict(orient="records")
+
     return {
         "nb_samples": len(X_processed),
-        "preview": preview
+        "preview": preview_records
     }
 
 

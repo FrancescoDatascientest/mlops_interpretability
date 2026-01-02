@@ -1,5 +1,6 @@
 import pandas as pd
 from sklearn.preprocessing import OneHotEncoder
+from sklearn.preprocessing import LabelEncoder
 
 def preprocess_initial(df: pd.DataFrame):
     """Préprocessing commun pour toutes les données"""
@@ -47,7 +48,6 @@ def preprocess_train(df: pd.DataFrame):
     """Préprocessing strict pour le training (supprime la cible)"""
     df['is_home_pitcher'] = df['inning_topbot'].apply(lambda x: 1 if x == 'Top' else 0)
     
-    # On exclut la colonne cible de variables
     variables = ['player_name', 'is_home_pitcher', 
                  "release_speed", "release_pos_x", "release_pos_y", 
                  "release_pos_z", "release_extension", "release_spin_rate", 
@@ -71,6 +71,8 @@ def preprocess_train(df: pd.DataFrame):
     
     y = df['description']
     X = df.drop(columns = 'description')
+    le = LabelEncoder()
+    y = le.fit_transform(y)
     categorical_columns = [col for col in X.columns if X[col].dtype == 'object']
     numeric_columns = [col for col in X.columns if col not in categorical_columns]
     ohe = OneHotEncoder(handle_unknown='ignore', sparse_output=False)
@@ -78,4 +80,4 @@ def preprocess_train(df: pd.DataFrame):
                           columns=ohe.get_feature_names_out(categorical_columns),
                           index=df.index)
     df_final = pd.concat([X[numeric_columns], df_cat], axis=1)
-    return df_final, ohe, y
+    return df_final, ohe, le, y

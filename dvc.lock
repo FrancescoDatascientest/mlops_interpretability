@@ -10,22 +10,26 @@ stages:
       nfiles: 15
     - path: training/preprocess.py
       hash: md5
-      md5: 585fa70b4e4130969d5a5a441480ac4b
-      size: 4050
+      md5: 303cb25d0066f423a6d06699116d3f9a
+      size: 4109
     - path: training/train.py
       hash: md5
-      md5: cc827b1e4eb55fbc709c807ae83ac6b5
-      size: 1662
+      md5: 60b8f134177637c121c02ca1431269b7
+      size: 1800
     - path: utils/config_loader.py
       hash: md5
       md5: 515ea469cecc0e86a2e315f2d8ea091a
       size: 400
     outs:
+    - path: artifacts/label_encoder.joblib
+      hash: md5
+      md5: d8beebc86f69cff9931deaccce83f812
+      size: 657
     - path: artifacts/ohe_encoder.joblib
       hash: md5
       md5: 7307ae130c9257fbb604e45f416ad69e
       size: 2842
     - path: artifacts/rf_pitch_model.joblib
       hash: md5
-      md5: dd2c6b55c45416b80dd30c8e2cec289b
-      size: 456766129
+      md5: ced7bf8ce05f98523e19955656c68040
+      size: 456764897

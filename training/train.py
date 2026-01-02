@@ -19,6 +19,7 @@ DATA_DIR = config["data_dir"]
 ARTIFACTS_DIR = config["artifacts_dir"]
 MODEL_PATH = os.path.join(ARTIFACTS_DIR, "rf_pitch_model.joblib")
 OHE_PATH = os.path.join(ARTIFACTS_DIR, "ohe_encoder.joblib")
+LE_PATH = os.path.join(ARTIFACTS_DIR, "label_encoder.joblib")
 
 def load_raw_data():
     files = glob.glob(os.path.join(DATA_DIR, "*.csv"))
@@ -35,7 +36,7 @@ def load_raw_data():
 def train():
     df = load_raw_data()
     # Preprocessing + fit OHE
-    X_processed, ohe, y = preprocess_train(df)
+    X_processed, ohe, le, y = preprocess_train(df)
 
     # Train/test split
     X_train, X_test, y_train, y_test = train_test_split(X_processed, y, test_size=0.2, random_state=42)
@@ -47,8 +48,10 @@ def train():
     os.makedirs(ARTIFACTS_DIR, exist_ok=True)
     joblib.dump(model, MODEL_PATH)
     joblib.dump(ohe, OHE_PATH)
+    joblib.dump(le, LE_PATH)
     print(f"✅ Model saved to {MODEL_PATH}")
     print(f"✅ OHE saved to {OHE_PATH}")
+    print(f"✅ LE saved to {LE_PATH}")
 
 if __name__ == "__main__":
     train()

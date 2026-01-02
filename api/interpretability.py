@@ -15,13 +15,13 @@ def compute_local_shap(explainer, X_processed: pd.DataFrame):
     """
     Retourne les SHAP values locales pour X_processed
     """
-    shap_values = explainer.shap_values(X_processed)
+    shap_values = explainer.shap_values(X_processed, approximate=True)
     return shap_values  # garder en numpy array
 
 
 def generate_summary_plot(X, shap_values, output_path="summary_plot.png"):
     plt.figure(figsize=(10, 6))
-    shap.summary_plot(shap_values, X, show=False)
+    shap.summary_plot(shap_values[:, :, 3], X, show=False)
     plt.tight_layout()
     plt.savefig(output_path, dpi=160)
     plt.close()
