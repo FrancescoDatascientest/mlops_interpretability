@@ -30,16 +30,24 @@ def preprocess_initial(df: pd.DataFrame):
 
     return df
 
-def preprocess_for_inference(df: pd.DataFrame, ohe):
-    """Preprocessing pour l'API (transformer avec OHE existant)"""
+def preprocess_for_inference(df: pd.DataFrame, ohe: OneHotEncoder):
     df = preprocess_initial(df)
 
-    categorical_columns = [col for col in df.columns if df[col].dtype == 'object']
+    categorical_columns = list(ohe.feature_names_in_)
+
+    for col in categorical_columns:
+        if col not in df.columns:
+            df[col] = "unknown"
+
     numeric_columns = [col for col in df.columns if col not in categorical_columns]
 
-    df_cat = pd.DataFrame(ohe.transform(df[categorical_columns]),
-                          columns=ohe.get_feature_names_out(categorical_columns),
-                          index=df.index)
+    # OHE
+    df_cat = pd.DataFrame(
+        ohe.transform(df[categorical_columns]),
+        columns=ohe.get_feature_names_out(categorical_columns),
+        index=df.index
+    )
+
     df_final = pd.concat([df[numeric_columns], df_cat], axis=1)
     return df_final
 
