@@ -1,139 +1,152 @@
-from fastapi import FastAPI
-from fastapi import UploadFile, File
-from pydantic import BaseModel
-import joblib
-import numpy as np
+from fastapi import FastAPI, UploadFile, File
+from fastapi.responses import FileResponse
 import pandas as pd
 import os
-from training.preprocess import preprocess_for_inference
+import joblib
+import subprocess
 
-# Initialiser l'application
+from utils.config_loader import load_config
+from training.preprocess import preprocess_for_inference
+from .interpretability import (
+    init_explainer,
+    compute_local_shap,
+    generate_summary_plot,
+    generate_dependence_plot,
+    generate_force_plot
+)
+from .interpretability import (
+    init_lime_explainer,
+    generate_lime_explanation
+)
+
+
 app = FastAPI(title="Interpretable ML API")
 
-# Chemins absolus basés sur l'emplacement du fichier main.py
-BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-MODEL_PATH = os.path.join(BASE_DIR, "artifacts", "xgb_pitch_model.joblib")
-LABEL_ENCODER_PATH = os.path.join(BASE_DIR, "artifacts", "label_encoder.joblib")
-OHE_ENCODER_PATH = os.path.join(BASE_DIR, "artifacts", "ohe_encoder.joblib")
+config = load_config()
 
-# Charger les artefacts au démarrage
+# Chemins locaux
+ARTIFACTS_DIR = config["artifacts_dir"]
+MODEL_LOCAL_PATH = os.path.join(ARTIFACTS_DIR, "rf_pitch_model.joblib")
+OHE_LOCAL_PATH = os.path.join(ARTIFACTS_DIR, "ohe_encoder.joblib")
+LE_LOCAL_PATH = os.path.join(ARTIFACTS_DIR, "label_encoder.joblib")
+
+
 @app.on_event("startup")
 def load_artifacts():
-    global model, label_encoder, ohe_encoder
-    try:
-        model = joblib.load(MODEL_PATH)
-        label_encoder = joblib.load(LABEL_ENCODER_PATH)
-        ohe_encoder = joblib.load(OHE_ENCODER_PATH)
-        print("✅ Modèle et encodeurs chargés avec succès")
-    except Exception as e:
-        print(f"❌ Erreur de chargement des artefacts: {e}")
-        model, label_encoder, ohe_encoder = None, None, None
+    global model, ohe_encoder
 
-# Route d'accueil simple
-@app.get("/")
-def home():
-    return {"message": "API de prédiction opérationnelle ✅"}
+    if not os.path.exists(ARTIFACTS_DIR):
+        os.makedirs(ARTIFACTS_DIR)
 
-# Fonction de prétraitement
-def preprocess_input(df: pd.DataFrame):
-    # Exemple : transformation custom
-    df['is_home_pitcher'] = df['inning_topbot'].apply(lambda x: 1 if x == 'Top' else 0)
+    if not os.path.exists(MODEL_LOCAL_PATH):
+        subprocess.run(
+            f"dagshub download --bucket FrancescoDatascientest/mlops_interpretability artifacts/rf_pitch_model.joblib {MODEL_LOCAL_PATH}",
+            shell=True, check=True
+        )
+    if not os.path.exists(OHE_LOCAL_PATH):
+        subprocess.run(
+            f"dagshub download --bucket FrancescoDatascientest/mlops_interpretability artifacts/ohe_encoder.joblib {OHE_LOCAL_PATH}",
+            shell=True, check=True
+        )
 
-    variables = [
-    'description',
-    'player_name',
-    'is_home_pitcher',
-    #'home_team', 'away_team',
-    # Lancer / release
-    "release_speed",          # Vitesse de la balle au moment du lâcher (mph)
-    "release_pos_x",          # Position horizontale du point de release (feet)
-    "release_pos_y",          # Position verticale (distance depuis le monticule ou le sol)
-    "release_pos_z",          # Hauteur du point de release (feet)
-    "release_extension",      # Distance du pied du monticule à la main au moment du release (feet)
-    "release_spin_rate",      # Vitesse de rotation de la balle au release (rpm)              
-    "spin_axis",              # Idem spin_dir (peut être redondant)
-    "p_throws",               # Bras du lanceur (R = droitier, L = gaucher)
-    "pitch_name",             # Type de pitch (fastball, slider, curve, etc.)
-    "pitch_number",           # Ordre du pitch dans l'AB
-
-    # Trajectoire / physique
-    "vx0", "vy0", "vz0",      # Vitesse de la balle sur les axes x, y, z au release (feet/sec)
-    "ax", "ay", "az",         # Accélérations sur les axes x, y, z (gravité + spin)
-    "pfx_x", "pfx_z",         # Déviation latérale (x) et verticale (z)
-    "effective_speed",        # Vitesse perçue par le frappeur
-    "sz_top", "sz_bot",       # Bornes supérieures et inférieures de la zone de strike
-    "arm_angle",    # Angle du bras du lanceur au release,
-
-    'game_type',
-    'stand',
-
-    # Contexte du joueur
-    "age_bat",                # Âge du batteur
-    "age_bat_legacy",         # Âge lors de la première saison MLB
-    "n_priorpa_thisgame_player_at_bat",  # Nombre d'AB précédents pour ce joueur dans le match
-
-    # Champ / défense
-    "of_fielding_alignment",  # Alignement des joueurs de champ extérieur
-    "if_fielding_alignment",  # Alignement des joueurs de champ intérieur
-
-    # Compte / situation
-    "balls", "strikes",       # Compte courant du batteur
-    "outs_when_up",           # Nombre de retraits lors de l'AB
-    "inning", "inning_topbot",# Manche et top/bottom (haut/bas)
-    "home_score", "away_score", # Score courant
-    # "home_score_diff",        # Différence score maison - extérieur
-    "at_bat_number"           # Numéro d'AB dans le match
-]
-
-    df = df[variables].copy()
-    df.drop(columns = "description", inplace = True)
-    df.dropna(inplace=True)
-
-    cols_to_convert = [
-    'pitch_number',
-    'age_bat',
-    'age_bat_legacy',
-    'n_priorpa_thisgame_player_at_bat',
-    'balls',
-    'strikes',
-    'outs_when_up',
-    'inning',
-    'home_score',
-    'away_score',
-    'at_bat_number'
-]
+    model = joblib.load(MODEL_LOCAL_PATH)
+    ohe_encoder = joblib.load(OHE_LOCAL_PATH)
+    print("✅ Model and OHE loaded")
 
 
-    for col in df[cols_to_convert] : 
-        df[col] = df[col].astype(float)
-
-    categorical_columns = [col for col in df.columns if df[col].dtype == 'object']
-    numeric_columns = [col for col in df.columns if col not in categorical_columns]
-
-    df_cat = pd.DataFrame(ohe_encoder.transform(df[categorical_columns]),
-    columns = ohe_encoder.get_feature_names_out(categorical_columns),
-    index = df.index)
-    
-    df_final = pd.concat([df[numeric_columns], df_cat], axis=1)
-    return df_final
-
-# Endpoint predict avec CSV
 @app.post("/predict")
 async def predict(file: UploadFile = File(...)):
-    if model is None:
-        return {"error": "Modèle non chargé"}
-
+    # 1️⃣ Lire et preprocesser le CSV
     df = pd.read_csv(file.file)
-    X_processed = preprocess_input(df)
+    X_processed = preprocess_for_inference(df, ohe_encoder)
+    preds_encoded = model.predict(X_processed)
+    label_encoder = joblib.load(LE_LOCAL_PATH)
+    preds = label_encoder.inverse_transform(preds_encoded)
 
-    preds = model.predict(X_processed)
-    if label_encoder is not None:
-        preds = label_encoder.inverse_transform(preds)
+    # 2️⃣ Créer un explainer pour ce dataset
+    explainer = init_explainer(model)
+    shap_values = compute_local_shap(explainer, X_processed)
 
-    X_processed["prediction"] = preds
-    preview = X_processed.head(5).to_dict(orient="records")
+    label_encoder = joblib.load(LE_LOCAL_PATH)
+    class_names = label_encoder.classes_.tolist()
+    lime_explainer = init_lime_explainer(X_processed, class_names)
+
+
+    # 3️⃣ Stocker les données pour les endpoints SHAP
+    app.state.df_original = df
+    app.state.X_processed = X_processed
+    app.state.shap_values = shap_values
+    app.state.explainer = explainer
+    app.state.lime_explainer = lime_explainer
+    app.state.predictions = preds
+
+
+    preview = X_processed.head(4).copy()
+    preview['preds'] = preds[:4] 
+    preview_records = preview.to_dict(orient="records")
 
     return {
-        "nb_samples": len(df),
-        "preview": preview
+        "nb_samples": len(X_processed),
+        "preview": preview_records
     }
+
+
+@app.get("/interpretability/plot/summary")
+async def summary_plot():
+    if not hasattr(app.state, "X_processed"):
+        return {"error": "Aucune donnée chargée. Appelez /predict d'abord."}
+
+    X = app.state.X_processed
+    shap_values = app.state.shap_values
+
+    output_path = "summary_plot.png"
+    generate_summary_plot(X, shap_values, output_path)
+    return FileResponse(output_path, media_type="image/png")
+
+
+@app.get("/interpretability/plot/dependence")
+async def dependence_plot(feature: str):
+    if not hasattr(app.state, "X_processed"):
+        return {"error": "Aucune donnée chargée. Appelez /predict d'abord."}
+
+    X = app.state.X_processed
+    shap_values = app.state.shap_values
+
+    output_path = f"dependence_{feature}.png"
+    generate_dependence_plot(X, shap_values, feature, output_path)
+    return FileResponse(output_path, media_type="image/png")
+
+
+
+@app.get("/interpretability/plot/force")
+async def force_plot(index: int = 0):
+    X = app.state.X_processed
+    shap_values = app.state.shap_values
+    explainer = app.state.explainer
+
+    output_path = f"force_plot_{index}.html"
+    generate_force_plot(explainer, shap_values, X, index=index, output_path=output_path)
+
+    return FileResponse(output_path, media_type="text/html")
+
+
+@app.get("/interpretability/lime")
+async def lime_explanation(index: int = 0, num_features: int = 10):
+    if not hasattr(app.state, "X_processed"):
+        return {"error": "Aucune donnée chargée. Appelez /predict d'abord."}
+
+    X = app.state.X_processed
+    lime_explainer = app.state.lime_explainer
+
+    output_path = f"lime_explanation_{index}.html"
+
+    generate_lime_explanation(
+        lime_explainer,
+        model,
+        X,
+        index=index,
+        num_features=num_features,
+        output_path=output_path
+    )
+
+    return FileResponse(output_path, media_type="text/html")
