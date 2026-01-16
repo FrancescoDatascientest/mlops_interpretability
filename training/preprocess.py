@@ -74,18 +74,45 @@ def preprocess_train(df: pd.DataFrame):
         'pitch_number','age_bat','age_bat_legacy','n_priorpa_thisgame_player_at_bat',
         'balls','strikes','outs_when_up','inning','home_score','away_score','at_bat_number'
     ]
+   
     for col in cols_to_convert:
         df[col] = df[col].astype(float)
     
+    mapping = {
+    'called_strike': 'strike',
+    'swinging_strike': 'strike',
+    'swinging_strike_blocked': 'strike',
+    'blocked_ball': 'other',
+    'foul_tip': 'foul',
+    'foul_bunt': 'foul',
+    'missed_bunt': 'other',
+    'bunt_foul_tip': 'foul',
+    'pitchout': 'other',
+    'ball': 'ball',
+    'foul': 'foul',
+    'hit_into_play': 'in_play',
+    'hit_by_pitch': 'other'}
+
+    df['description'] = df.description.replace(mapping)
+
+    df = df[df['description'] != 'other']
+
     y = df['description']
     X = df.drop(columns = 'description')
     le = LabelEncoder()
     y = le.fit_transform(y)
+   
     categorical_columns = [col for col in X.columns if X[col].dtype == 'object']
+    
     numeric_columns = [col for col in X.columns if col not in categorical_columns]
+    
     ohe = OneHotEncoder(handle_unknown='ignore', sparse_output=False)
     df_cat = pd.DataFrame(ohe.fit_transform(X[categorical_columns]),
                           columns=ohe.get_feature_names_out(categorical_columns),
                           index=df.index)
+    
     df_final = pd.concat([X[numeric_columns], df_cat], axis=1)
+    
     return df_final, ohe, le, y
+
+

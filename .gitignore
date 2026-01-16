@@ -17,3 +17,11 @@ notebooks/.virtual_documents/
 *.ipynb_checkpoints
 __pycache__/
 *.pyc
+
+# Images
+*.png
+*.jpg
+*.jpeg
+*.gif
+*.bmp
+*.tiff

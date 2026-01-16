@@ -1,12 +1,21 @@
-from fastapi import FastAPI, UploadFile, File
+import json
+from datetime import datetime
+
+from fastapi import FastAPI, UploadFile, File, BackgroundTasks
 from fastapi.responses import FileResponse
 import pandas as pd
 import os
+import matplotlib.pyplot as plt
+from sklearn.metrics import ConfusionMatrixDisplay
+import numpy as np
 import joblib
 import subprocess
 
 from utils.config_loader import load_config
 from training.preprocess import preprocess_for_inference
+from training.train import train_and_select_best_model
+
+
 from .interpretability import (
     init_explainer,
     compute_local_shap,
@@ -117,7 +126,6 @@ async def dependence_plot(feature: str):
     return FileResponse(output_path, media_type="image/png")
 
 
-
 @app.get("/interpretability/plot/force")
 async def force_plot(index: int = 0):
     X = app.state.X_processed
@@ -150,3 +158,66 @@ async def lime_explanation(index: int = 0, num_features: int = 10):
     )
 
     return FileResponse(output_path, media_type="text/html")
+
+
+@app.post("/retrain")
+async def retrain(background_tasks: BackgroundTasks):
+    """
+    Endpoint pour ré-entraîner les modèles XGBoost et RandomForest,
+    sélectionner le meilleur et le recharger pour les prédictions.
+    """
+
+    def training_job():
+        global model
+
+        # Entraîner et sélectionner le meilleur modèle
+        best_model_name, metrics, train_size = train_and_select_best_model(
+            artifacts_dir=ARTIFACTS_DIR
+        )
+
+        # Mettre à jour le modèle global pour les prédictions
+        model_path = os.path.join(ARTIFACTS_DIR, f"{best_model_name}_pitch_model.joblib")
+        model = joblib.load(model_path)
+        print(f"✅ Meilleur modèle chargé : {best_model_name} avec metrics {metrics}")
+
+        # Sauvegarder les metrics dans un JSON
+        metrics_payload = {
+            "timestamp": datetime.utcnow().isoformat(),
+            "best_model": best_model_name,
+            "metrics": metrics,
+            "train_size": train_size
+        }
+
+        metrics_path = os.path.join(ARTIFACTS_DIR, "latest_training_metrics.json")
+        with open(metrics_path, "w") as f:
+            json.dump(metrics_payload, f, indent=2)
+
+        print(f"✅ Metrics sauvegardées dans {metrics_path}")
+
+    # Lancer le job en arrière-plan pour ne pas bloquer l'API
+    background_tasks.add_task(training_job)
+
+    return {"message": "Ré-entraînement lancé en arrière-plan."}
+
+
+
+@app.get("/retrain/metrics")
+def get_latest_training_metrics():
+    metrics_path = os.path.join(ARTIFACTS_DIR, "latest_training_metrics.json")
+
+    if not os.path.exists(metrics_path):
+        return {"status": "no training run yet"}
+
+    with open(metrics_path) as f:
+        return json.load(f)
+    
+from fastapi.responses import FileResponse
+
+@app.get("/retrain/confusion-matrix/{model_name}")
+def get_confusion_matrix(model_name: str):
+    path = os.path.join(ARTIFACTS_DIR, f"{model_name}_confusion_matrix.png")
+
+    if not os.path.exists(path):
+        return {"error": "Confusion matrix not found"}
+
+    return FileResponse(path, media_type="image/png")
