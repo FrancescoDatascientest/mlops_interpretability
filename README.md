@@ -22,6 +22,7 @@ mlops_interpretability/
 ├── notebooks/
 ├── training/
 │   ├── preprocess.py
+    ├── evaluation.py
 │   └── train.py
 ├── utils/
 │   └── config_loader.py
