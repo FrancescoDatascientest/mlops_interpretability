@@ -7,8 +7,8 @@ from sklearn.ensemble import RandomForestClassifier
 from xgboost import XGBClassifier
 from sklearn.metrics import accuracy_score, confusion_matrix
 from sklearn.model_selection import train_test_split
-from .preprocess import preprocess_train
-from .evaluation import save_confusion_matrix
+from training.preprocess import preprocess_train
+from training.evaluation import save_confusion_matrix
 from utils.config_loader import load_config
 
 # DATA_DIR = "data/"
@@ -49,7 +49,7 @@ def train():
     model.fit(X_train, y_train)
 
     os.makedirs(ARTIFACTS_DIR, exist_ok=True)
-    joblib.dump(model, MODEL_PATH)
+    joblib.dump(model, MODEL_PATH, compress=3)
     joblib.dump(ohe, OHE_PATH)
     joblib.dump(le, LE_PATH)
     print(f"✅ Model saved to {MODEL_PATH}")
@@ -95,7 +95,7 @@ def train_and_select_best_model(artifacts_dir: str):
         artifacts_dir=artifacts_dir,
         display_labels=label_encoder.classes_)
 
-        joblib.dump(model, os.path.join(artifacts_dir, f"{name}_pitch_model.joblib"))
+        joblib.dump(model, os.path.join(artifacts_dir, f"{name}_pitch_model.joblib"), compress=3)
 
     joblib.dump(ohe_encoder, os.path.join(artifacts_dir, "ohe_encoder.joblib"))
     joblib.dump(label_encoder, os.path.join(artifacts_dir, "label_encoder.joblib"))

@@ -5,6 +5,8 @@ from fastapi import FastAPI, UploadFile, File, BackgroundTasks
 from fastapi.responses import FileResponse
 import pandas as pd
 import os
+import matplotlib
+matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 from sklearn.metrics import ConfusionMatrixDisplay
 import numpy as np
@@ -58,9 +60,16 @@ def load_artifacts():
             shell=True, check=True
         )
 
+    if not os.path.exists(LE_LOCAL_PATH):
+        subprocess.run(
+            f"dagshub download --bucket FrancescoDatascientest/mlops_interpretability artifacts/label_encoder.joblib {LE_LOCAL_PATH}",
+            shell=True, check=True
+        )
+
     model = joblib.load(MODEL_LOCAL_PATH)
     ohe_encoder = joblib.load(OHE_LOCAL_PATH)
-    print("✅ Model and OHE loaded")
+    le_encoder = joblib.load(LE_LOCAL_PATH)
+    print("✅ Model, LE and OHE loaded")
 
 
 @app.post("/predict")
@@ -198,6 +207,7 @@ async def retrain(background_tasks: BackgroundTasks):
     background_tasks.add_task(training_job)
 
     return {"message": "Ré-entraînement lancé en arrière-plan."}
+   
 
 
 
